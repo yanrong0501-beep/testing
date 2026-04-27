@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Teaching Tools — Cognitive Load & Micro-Step Builder</title>
+<style>
+  :root {
+    --page-bg: #faf5f0;
+    --card-bg: #ffffff;
+    --elevated: #f5ebe0;
+    --accent: #c2410c;
+    --accent-light: #ea580c;
+    --warm: #92400e;
+    --text-primary: #1c1917;
+    --text-secondary: #44403c;
+    --text-muted: #78716c;
+    --success: #166534;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--page-bg);
+    color: var(--text-primary);
+    font-family: Georgia, serif;
+    line-height: 1.7;
+    font-size: 1rem;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  .page-title {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+  }
+  .page-subtitle {
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    font-style: italic;
+  }
+
+  .widget {
+    background: var(--card-bg);
+    border: 1px solid #c2410c20;
+    border-radius: 14px;
+    padding: 1.75rem;
+    margin: 0 auto 2.5rem;
+    max-width: 860px;
+    box-shadow: 0 4px 28px #c2410c0d;
+  }
+
+  .widget h2 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 0.5rem;
+  }
+  .widget > p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    margin-bottom: 1.25rem;
+  }
+
+  label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  select, input[type="text"] {
+    background: var(--elevated);
+    color: var(--text-primary);
+    border: 1px solid #c2410c30;
+    border-radius: 6px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.9rem;
+    font-family: Georgia, serif;
+    outline: none;
+  }
+  select:focus { border-color: var(--accent); }
+
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: Georgia, serif;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+  button.secondary {
+    background: var(--elevated);
+    color: var(--text-secondary);
+    border: 1px solid #c2410c30;
+  }
+
+  .flex { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-start; }
+  .flex-center { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+
+  /* ── LOAD BAR ── */
+  #clb-bar-wrap {
+    margin: 0.75rem 0;
+  }
+  #clb-bar {
+    width: 100%;
+    height: 20px;
+    background: var(--elevated);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+  }
+  .bar-seg { height: 100%; transition: width 0.3s ease; }
+  .bar-legend {
+    display: flex; gap: 1rem; font-size: 0.82rem;
+    color: var(--text-secondary); margin-top: 0.35rem;
+  }
+  .bar-legend span { display: flex; align-items: center; gap: 4px; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+  /* ── DRAG POOL ── */
+  .pool-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
+    min-height: 40px;
+  }
+  .card-btn {
+    background: var(--elevated);
+    color: var(--text-primary);
+    border: 1px solid #c2410c25;
+    border-radius: 6px;
+    padding: 0.4rem 0.65rem;
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: grab;
+    font-family: Georgia, serif;
+    transition: background 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+  .card-btn:hover { background: #edddd0; box-shadow: 0 2px 8px #c2410c18; }
+  .card-btn.dragging { opacity: 0.4; }
+
+  /* ── BINS ── */
+  .bins-row {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+  }
+  .bin {
+    flex: 1 1 160px;
+    min-height: 100px;
+    background: var(--elevated);
+    border: 1.5px dashed #c2410c40;
+    border-radius: 8px;
+    padding: 0.6rem;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .bin.drag-over { border-color: var(--accent); background: #fde8de; }
+  .bin strong {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.4rem;
+  }
+  .bin-list { min-height: 55px; display: grid; gap: 0.35rem; }
+
+  /* ── FEEDBACK ── */
+  #clb-feedback {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    line-height: 1.5;
+    min-height: 1.2em;
+  }
+  .tip {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+    font-style: italic;
+  }
+
+  hr.divider {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #c2410c30, transparent);
+    margin: 1.25rem 0;
+  }
+
+  /* ── MSB SLOTS ── */
+  .slots-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .msb-slot {
+    min-height: 80px;
+    background: var(--elevated);
+    border: 1.5px dashed #c2410c40;
+    border-radius: 8px;
+    padding: 0.5rem;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .msb-slot.drag-over { border-color: var(--accent); background: #fde8de; }
+  .msb-slot strong {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+  .msb-drop { min-height: 40px; display: grid; gap: 0.3rem; }
+
+  /* ── SLIDERS ── */
+  .sliders-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin: 0.75rem 0;
+  }
+  .slider-wrap label { margin-bottom: 0.2rem; }
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--elevated);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 2px solid var(--accent-light);
+    cursor: pointer;
+  }
+  .slider-val {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: right;
+  }
+
+  /* ── SIMULATION GRAPH ── */
+  #msb-graph-wrap {
+    position: relative;
+    margin-top: 0.75rem;
+  }
+  #msb-graph {
+    width: 100%;
+    height: 160px;
+    background: var(--elevated);
+    border-radius: 8px;
+    display: block;
+  }
+  #msb-tooltip {
+    position: absolute;
+    display: none;
+    background: var(--card-bg);
+    border: 1px solid #c2410c30;
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    pointer-events: none;
+    max-width: 220px;
+    line-height: 1.4;
+  }
+  #msb-sim-log {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+    min-height: 1em;
+  }
+
+  @media (max-width: 600px) {
+    .slots-row { grid-template-columns: repeat(3, 1fr); }
+    .sliders-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<p class="page-title">Interactive Teaching Tools</p>
+<p class="page-subtitle">Chapter 1 — Why Small Wins Stick: Cognitive Load, Micro-Steps, and the Elephant &amp; the Rider</p>
+
+<!-- ══════════════════════════════════════════════════
+     WIDGET 1: COGNITIVE LOAD BALANCER
+══════════════════════════════════════════════════ -->
+<div class="widget" id="widget-clb">
+  <h2>🧠 Cognitive Load Balancer</h2>
+  <p>Drag content blocks into <strong>Essential</strong>, <strong>Nice-to-have</strong>, or <strong>Remove</strong>. Toggle the learner profile to see how the load bar shifts. Then use Predict-before-you-peek to test your intuition.</p>
+
+  <div class="flex-center" style="margin-bottom:0.75rem;">
+    <div>
+      <label for="clb-profile">Learner profile</label>
+      <select id="clb-profile">
+        <option value="novice">Novice</option>
+        <option value="experienced">Experienced</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="clb-bar-wrap">
+    <div id="clb-bar" aria-label="Estimated cognitive load">
+      <div class="bar-seg" id="bar-intr" style="background:#92400e; width:0%"></div>
+      <div class="bar-seg" id="bar-extr" style="background:#c2410c; width:0%"></div>
+      <div class="bar-seg" id="bar-germ" style="background:#166534; width:0%"></div>
+    </div>
+    <div class="bar-legend">
+      <span><span class="dot" style="background:#92400e"></span>Intrinsic</span>
+      <span><span class="dot" style="background:#c2410c"></span>Extraneous</span>
+      <span><span class="dot" style="background:#166534"></span>Germane</span>
+    </div>
+  </div>
+
+  <div class="flex" style="margin-top:1rem;">
+    <!-- Pool -->
+    <div style="flex:1 1 200px; min-width:180px;">
+      <label>Content blocks</label>
+      <div class="pool-grid" id="clb-pool"></div>
+    </div>
+    <!-- Bins -->
+    <div style="flex:2 1 380px; min-width:280px;">
+      <label>Sort the lesson content</label>
+      <div class="bins-row">
+        <div class="bin" id="bin-essential" data-bin="essential">
+          <strong>Essential</strong>
+          <div class="bin-list" id="list-essential"></div>
+        </div>
+        <div class="bin" id="bin-nice" data-bin="nice">
+          <strong>Nice-to-have</strong>
+          <div class="bin-list" id="list-nice"></div>
+        </div>
+        <div class="bin" id="bin-remove" data-bin="remove">
+          <strong>Remove</strong>
+          <div class="bin-list" id="list-remove"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="flex" style="gap:1.25rem; align-items:flex-start;">
+    <!-- Predict -->
+    <div style="flex:1 1 280px;">
+      <label>Predict-before-you-peek</label>
+      <div class="flex-center" style="gap:0.5rem; flex-wrap:wrap;">
+        <select id="clb-predict-block" style="flex:1 1 140px;"></select>
+        <select id="clb-predict-effect" style="flex:1 1 180px;">
+          <option value="help">Removing it helps novices</option>
+          <option value="nochange">No major change</option>
+          <option value="harm">Removing it harms novices</option>
+        </select>
+        <button id="clb-predict-btn">Submit Prediction</button>
+      </div>
+      <p id="clb-feedback"></p>
+    </div>
+    <!-- Quick actions -->
+    <div style="flex:0 1 200px;">
+      <label>Quick actions</label>
+      <div class="flex-center">
+        <button id="clb-reset" class="secondary">Reset</button>
+        <button id="clb-suggest">Auto-suggest (Novice)</button>
+      </div>
+      <p class="tip">Novices benefit when diagrams are paired with brief directions and when anecdotes are trimmed.</p>
+    </div>
+  </div>
+  <p class="tip" style="margin-top:0.75rem;">💡 On mobile or keyboard: click/tap a block to cycle it through pool → Essential → Nice-to-have → Remove.</p>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     WIDGET 2: MICRO-STEP SEQUENCE BUILDER
+══════════════════════════════════════════════════ -->
+<div class="widget" id="widget-msb">
+  <h2>🗓️ Micro-Step Sequence Builder</h2>
+  <p>Drag micro-action cards into the five day slots. Watch <strong>Rider Clarity</strong> and <strong>Elephant Energy</strong> update. Then run a weekly simulation to see where dropout risk spikes and why.</p>
+
+  <div class="flex" style="margin-bottom:0.75rem;">
+    <!-- Card bank -->
+    <div style="flex:1 1 180px; min-width:160px;">
+      <label>Micro-action cards</label>
+      <div class="pool-grid" id="msb-cards"></div>
+    </div>
+    <!-- Timeline -->
+    <div style="flex:2 1 400px; min-width:280px;">
+      <label>Timeline (one week)</label>
+      <div class="slots-row" id="msb-slots">
+        <div class="msb-slot" data-index="0"><strong>Day 1</strong><div class="msb-drop" id="msb-drop-0"></div></div>
+        <div class="msb-slot" data-index="1"><strong>Day 2</strong><div class="msb-drop" id="msb-drop-1"></div></div>
+        <div class="msb-slot" data-index="2"><strong>Day 3</strong><div class="msb-drop" id="msb-drop-2"></div></div>
+        <div class="msb-slot" data-index="3"><strong>Day 4</strong><div class="msb-drop" id="msb-drop-3"></div></div>
+        <div class="msb-slot" data-index="4"><strong>Day 5</strong><div class="msb-drop" id="msb-drop-4"></div></div>
+      </div>
+
+      <div class="sliders-row">
+        <div class="slider-wrap">
+          <label>Rider Clarity</label>
+          <input type="range" id="msb-clarity" min="0" max="100" value="0" disabled>
+          <p class="slider-val" id="msb-clarity-val">0%</p>
+        </div>
+        <div class="slider-wrap">
+          <label>Elephant Energy</label>
+          <input type="range" id="msb-energy" min="0" max="100" value="0" disabled>
+          <p class="slider-val" id="msb-energy-val">0%</p>
+        </div>
+      </div>
+
+      <div class="flex-center" style="gap:0.5rem; flex-wrap:wrap;">
+        <button id="msb-run">▶ Run Simulation</button>
+        <button id="msb-reset" class="secondary">Reset</button>
+        <span style="font-size:0.82rem; color:var(--text-muted);">Hint: Place a worked example early, a quick practice soon after, and a badge before midweek.</span>
+      </div>
+
+      <div id="msb-graph-wrap">
+        <canvas id="msb-graph"></canvas>
+        <div id="msb-tooltip"></div>
+      </div>
+      <p id="msb-sim-log"></p>
+    </div>
+  </div>
+  <p class="tip">💡 On mobile or keyboard: tap a card to place it in the next available day slot; tap the slot card to return it to the bank.</p>
+</div>
+
+
+<script>
+// ════════════════════════════════════════════════
+// SHARED DRAG STATE
+// ════════════════════════════════════════════════
+let dragId = null;
+let dragSource = null; // 'clb-pool' | 'clb-bin-X' | 'msb-bank' | 'msb-slot-N'
+
+// ════════════════════════════════════════════════
+// WIDGET 1: COGNITIVE LOAD BALANCER
+// ════════════════════════════════════════════════
+(function() {
+  const blocks = [
+    { id:'video',        name:'Short video (3 min)',  load:{in:2,ex:1,ge:2}, nov:{in:1,ex:1,ge:0},  exp:{in:0,ex:0,ge:0},  noviceHarm:false },
+    { id:'case',         name:'Case vignette',        load:{in:1,ex:1,ge:2}, nov:{in:0,ex:1,ge:1},  exp:{in:0,ex:0,ge:0},  noviceHarm:false },
+    { id:'diagram',      name:'Diagram',              load:{in:2,ex:1,ge:2}, nov:{in:1,ex:1,ge:1},  exp:{in:0,ex:-1,ge:0}, noviceHarm:false },
+    { id:'reflect',      name:'Reflective prompt',    load:{in:0,ex:1,ge:2}, nov:{in:0,ex:0,ge:1},  exp:{in:0,ex:0,ge:1},  noviceHarm:false },
+    { id:'quiz',         name:'Two-item quiz',        load:{in:1,ex:0,ge:3}, nov:{in:0,ex:0,ge:2},  exp:{in:0,ex:0,ge:1},  noviceHarm:true  },
+    { id:'anecdote',     name:'Anecdote',             load:{in:0,ex:2,ge:1}, nov:{in:0,ex:1,ge:0},  exp:{in:0,ex:1,ge:0},  noviceHarm:false },
+    { id:'data',         name:'Data table',           load:{in:2,ex:2,ge:1}, nov:{in:1,ex:1,ge:0},  exp:{in:0,ex:0,ge:0},  noviceHarm:false },
+    { id:'instructions', name:'Instructions',         load:{in:1,ex:0,ge:2}, nov:{in:-1,ex:-1,ge:1},exp:{in:0,ex:0,ge:0},  noviceHarm:true  },
+  ];
+
+  const reasons = {
+    instructions: 'Removing clear directions often harms novices by increasing extraneous search.',
+    anecdote:     'Anecdotes can add extraneous load without advancing the schema.',
+    diagram:      'Diagrams help if paired with directions; without them they can confuse.',
+    quiz:         'A quick check supports germane load via feedback.',
+    video:        'Short videos help when concise; long or unfocused clips can distract.',
+    data:         'Dense tables raise intrinsic and extraneous load for novices.',
+    reflect:      'Reflection boosts germane load after examples.',
+    case:         'Concrete cases build transfer if brief and aligned.',
+  };
+
+  // state: location for each block id
+  const state = {}; // id -> 'pool'|'essential'|'nice'|'remove'
+  blocks.forEach(b => state[b.id] = 'pool');
+
+  const profileSel   = document.getElementById('clb-profile');
+  const poolEl       = document.getElementById('clb-pool');
+  const listEls      = {
+    essential: document.getElementById('list-essential'),
+    nice:      document.getElementById('list-nice'),
+    remove:    document.getElementById('list-remove'),
+  };
+  const binEls = document.querySelectorAll('.bin');
+  const predictBlockSel  = document.getElementById('clb-predict-block');
+  const predictEffectSel = document.getElementById('clb-predict-effect');
+  const feedbackEl = document.getElementById('clb-feedback');
+
+  function getLoads(profile, stateOverride) {
+    const s = stateOverride || state;
+    let intr=0, extr=0, germ=0;
+    blocks.forEach(b => {
+      const loc = s[b.id];
+      if (loc === 'remove' || loc === 'pool') return;
+      const adj = profile === 'novice' ? b.nov : b.exp;
+      let i = b.load.in + (adj.in||0);
+      let e = b.load.ex + (adj.ex||0);
+      let g = b.load.ge + (adj.ge||0);
+      if (loc === 'essential') { e *= 0.6; g *= 1.1; }
+      else if (loc === 'nice') { e *= 1.25; g *= 0.9; }
+      // synergy: diagram + instructions
+      if (b.id === 'diagram' && s['instructions'] === 'essential' && profile === 'novice') {
+        e *= 0.8; g *= 1.1;
+      }
+      intr += Math.max(0, i);
+      extr += Math.max(0, e);
+      germ += Math.max(0, g);
+    });
+    return { intr, extr, germ };
+  }
+
+  function drawBar() {
+    const profile = profileSel.value;
+    const { intr, extr, germ } = getLoads(profile);
+    const total = Math.max(1, intr + extr + germ);
+    document.getElementById('bar-intr').style.width = (intr/total*100).toFixed(1) + '%';
+    document.getElementById('bar-extr').style.width = (extr/total*100).toFixed(1) + '%';
+    document.getElementById('bar-germ').style.width = (germ/total*100).toFixed(1) + '%';
+  }
+
+  function makeCard(block) {
+    const btn = document.createElement('button');
+    btn.className = 'card-btn';
+    btn.textContent = block.name;
+    btn.dataset.id = block.id;
+    btn.draggable = true;
+    btn.addEventListener('dragstart', e => {
+      dragId = block.id;
+      dragSource = 'clb';
+      btn.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', block.id);
+    });
+    btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
+    btn.addEventListener('click', () => {
+      // cycle: pool -> essential -> nice -> remove -> pool
+      const order = ['pool','essential','nice','remove'];
+      const cur = state[block.id];
+      state[block.id] = order[(order.indexOf(cur)+1) % order.length];
+      render();
+    });
+    return btn;
+  }
+
+  function render() {
+    poolEl.innerHTML = '';
+    Object.values(listEls).forEach(l => l.innerHTML = '');
+    blocks.forEach(b => {
+      const loc = state[b.id];
+      const card = makeCard(b);
+      if (loc === 'pool') poolEl.appendChild(card);
+      else listEls[loc].appendChild(card);
+    });
+    // populate predict dropdown
+    predictBlockSel.innerHTML = '';
+    blocks.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id; opt.textContent = b.name;
+      predictBlockSel.appendChild(opt);
+    });
+    drawBar();
+  }
+
+  // Drag-and-drop for bins
+  binEls.forEach(bin => {
+    bin.addEventListener('dragover', e => { e.preventDefault(); bin.classList.add('drag-over'); });
+    bin.addEventListener('dragleave', () => bin.classList.remove('drag-over'));
+    bin.addEventListener('drop', e => {
+      e.preventDefault();
+      bin.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      if (id && dragSource === 'clb') {
+        state[id] = bin.dataset.bin;
+        render();
+      }
+    });
+  });
+  // Drop back to pool
+  poolEl.addEventListener('dragover', e => e.preventDefault());
+  poolEl.addEventListener('drop', e => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('text/plain');
+    if (id && dragSource === 'clb') { state[id] = 'pool'; render(); }
+  });
+
+  profileSel.addEventListener('change', drawBar);
+
+  // Predict
+  document.getElementById('clb-predict-btn').addEventListener('click', () => {
+    const id = predictBlockSel.value;
+    const userPred = predictEffectSel.value;
+    const b = blocks.find(x => x.id === id);
+    const loc = state[id];
+
+    if (loc === 'remove') {
+      feedbackEl.textContent = 'This block is already in Remove — move it to Essential or Nice-to-have first.';
+      return;
+    }
+
+    // Simulate removing it
+    const orig = getLoads('novice');
+    const simState = Object.assign({}, state, {[id]: 'remove'});
+    const simLoads = getLoads('novice', simState);
+
+    const perf = s => (s.germ - s.extr) - (s.intr > 8 ? (s.intr-8)*0.5 : 0);
+    const delta = perf(simLoads) - perf(orig);
+
+    let model;
+    if (delta > 0.4) model = 'help';
+    else if (delta < -0.4) model = 'harm';
+    else model = 'nochange';
+
+    const correct = userPred === model;
+    const verdict = correct ? '✅ Correct!' : '❌ Not quite.';
+    const dir = model==='help' ? 'helps novices' : model==='harm' ? 'harms novices' : 'has little net effect';
+    feedbackEl.textContent = `${verdict} Removing "${b.name}" ${dir}. ${reasons[id]} (CLT principle: reduce extraneous, preserve schema-building supports.)`;
+  });
+
+  // Reset
+  document.getElementById('clb-reset').addEventListener('click', () => {
+    blocks.forEach(b => state[b.id] = 'pool');
+    feedbackEl.textContent = '';
+    render();
+  });
+
+  // Auto-suggest
+  document.getElementById('clb-suggest').addEventListener('click', () => {
+    // Heuristic: keep worked-example proxies + instructions as essential; anecdote to remove; rest to nice
+    const essential = ['instructions','diagram','quiz','reflect'];
+    const remove    = ['anecdote'];
+    blocks.forEach(b => {
+      if (essential.includes(b.id)) state[b.id] = 'essential';
+      else if (remove.includes(b.id)) state[b.id] = 'remove';
+      else state[b.id] = 'nice';
+    });
+    feedbackEl.textContent = 'Auto-suggested layout for novices: Instructions + Diagram + Quiz + Reflective prompt are marked Essential. Anecdote removed. Adjust based on your context!';
+    render();
+  });
+
+  render();
+})();
+
+
+// ════════════════════════════════════════════════
+// WIDGET 2: MICRO-STEP SEQUENCE BUILDER
+// ════════════════════════════════════════════════
+(function() {
+  const actions = [
+    { id:'goal',     name:'One-sentence goal',     clarity:20, energy:10, dropoutRisk:-15, note:'Sets clear expectations — crucial for Rider clarity on Day 1.' },
+    { id:'worked',   name:'Worked example',        clarity:25, energy:10, dropoutRisk:-20, note:'Reduces extraneous load; novices succeed earlier.' },
+    { id:'predict',  name:'Predict-before-peek',   clarity:15, energy:20, dropoutRisk:-10, note:'Builds germane load + autonomy — energises the Elephant.' },
+    { id:'quiz1',    name:'One-item check',        clarity:10, energy:15, dropoutRisk:-15, note:'Immediate feedback closes the learning loop.' },
+    { id:'badge',    name:'Progress badge',        clarity:5,  energy:30, dropoutRisk:-20, note:'Visible win — strong Elephant motivator.' },
+    { id:'case',     name:'Mini case study',       clarity:20, energy:15, dropoutRisk:-10, note:'Transfers knowledge to realistic context.' },
+    { id:'recap',    name:'2-min recap',           clarity:15, energy:5,  dropoutRisk:-10, note:'Spaced retrieval — solidifies prior schema.' },
+    { id:'dense',    name:'Dense lecture (10 min)',clarity:-5, energy:-20, dropoutRisk:25,  note:'High extraneous load; avoid without scaffolding.' },
+    { id:'longtask', name:'10-item quiz',          clarity:5,  energy:-15, dropoutRisk:20,  note:'Delay of feedback discourages novices.' },
+  ];
+
+  // slots: array of 5, each holds action id or null
+  const slots = [null, null, null, null, null];
+
+  const bankEl    = document.getElementById('msb-cards');
+  const clarityEl = document.getElementById('msb-clarity');
+  const energyEl  = document.getElementById('msb-energy');
+  const clarityValEl = document.getElementById('msb-clarity-val');
+  const energyValEl  = document.getElementById('msb-energy-val');
+  const simLogEl  = document.getElementById('msb-sim-log');
+  const canvas    = document.getElementById('msb-graph');
+  const tooltip   = document.getElementById('msb-tooltip');
+
+  function usedIds() { return slots.filter(Boolean); }
+  function isUsed(id) { return slots.includes(id); }
+
+  function makeCard(action, inBank) {
+    const btn = document.createElement('button');
+    btn.className = 'card-btn';
+    btn.textContent = action.name;
+    btn.dataset.id = action.id;
+    btn.draggable = true;
+    btn.addEventListener('dragstart', e => {
+      dragId = action.id;
+      dragSource = inBank ? 'msb-bank' : 'msb-slot';
+      btn.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', action.id);
+    });
+    btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
+    if (inBank) {
+      btn.addEventListener('click', () => {
+        // Place in next empty slot
+        const idx = slots.indexOf(null);
+        if (idx === -1) return;
+        slots[idx] = action.id;
+        render();
+      });
+    } else {
+      // In slot — clicking removes it back to bank
+      btn.addEventListener('click', () => {
+        const idx = slots.indexOf(action.id);
+        if (idx > -1) { slots[idx] = null; render(); }
+      });
+    }
+    return btn;
+  }
+
+  function updateMeters() {
+    let clarity = 0, energy = 0;
+    slots.forEach(id => {
+      if (!id) return;
+      const a = actions.find(x => x.id === id);
+      if (a) { clarity += a.clarity; energy += a.energy; }
+    });
+    clarity = Math.min(100, Math.max(0, clarity));
+    energy  = Math.min(100, Math.max(0, energy));
+    clarityEl.value = clarity;
+    energyEl.value  = energy;
+    clarityValEl.textContent = clarity + '%';
+    energyValEl.textContent  = energy + '%';
+  }
+
+  function render() {
+    bankEl.innerHTML = '';
+    // Bank: show actions NOT yet in slots
+    actions.forEach(a => {
+      if (!isUsed(a.id)) bankEl.appendChild(makeCard(a, true));
+    });
+    // Slots
+    slots.forEach((id, i) => {
+      const dropEl = document.getElementById(`msb-drop-${i}`);
+      dropEl.innerHTML = '';
+      if (id) {
+        const a = actions.find(x => x.id === id);
+        dropEl.appendChild(makeCard(a, false));
+      }
+    });
+    updateMeters();
+    clearGraph();
+  }
+
+  // Drag-and-drop for slots
+  document.querySelectorAll('.msb-slot').forEach(slot => {
+    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag-over'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+    slot.addEventListener('drop', e => {
+      e.preventDefault();
+      slot.classList.remove('drag-over');
+      const id = e.dataTransfer.getData('text/plain');
+      if (!id || dragSource !== 'msb-bank' && dragSource !== 'msb-slot') return;
+      const idx = parseInt(slot.dataset.index);
+      // If already placed, remove from old slot
+      const oldIdx = slots.indexOf(id);
+      if (oldIdx > -1) slots[oldIdx] = null;
+      // If slot occupied, swap back to bank (just clear it)
+      slots[idx] = id;
+      render();
+    });
+  });
+  // Drop back to bank
+  bankEl.addEventListener('dragover', e => e.preventDefault());
+  bankEl.addEventListener('drop', e => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData('text/plain');
+    if (!id) return;
+    const idx = slots.indexOf(id);
+    if (idx > -1) { slots[idx] = null; render(); }
+  });
+
+  function clearGraph() {
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.clientWidth || 600;
+    canvas.height = 160;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    simLogEl.textContent = '';
+    tooltip.style.display = 'none';
+  }
+
+  function runSimulation() {
+    const filled = slots.filter(Boolean);
+    if (filled.length === 0) {
+      simLogEl.textContent = 'Place at least one micro-action in the timeline first.';
+      return;
+    }
+
+    canvas.width = canvas.clientWidth || 600;
+    canvas.height = 160;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    const W = canvas.width, H = canvas.height;
+    const pad = { top:20, right:20, bottom:30, left:40 };
+    const gW = W - pad.left - pad.right;
+    const gH = H - pad.top  - pad.bottom;
+
+    // Simulate engagement over 7 days
+    let engagement = 60;
+    const data = [{day:0, val:engagement, note:''}];
+    for (let i=0;i<7;i++) {
+      const a = i < 5 ? actions.find(x => x.id === slots[i]) : null;
+      if (a) {
+        engagement += (a.clarity * 0.3 + a.energy * 0.5) * 0.3;
+        engagement += a.dropoutRisk * 0.4;
+      } else {
+        engagement -= 8; // no content = drift
+      }
+      engagement = Math.min(100, Math.max(5, engagement));
+      data.push({ day:i+1, val:engagement, note: a ? a.note : 'No content scheduled — learners drift.' });
+    }
+
+    // Grid
+    ctx.strokeStyle = '#c2410c18';
+    ctx.lineWidth = 1;
+    [25,50,75,100].forEach(v => {
+      const y = pad.top + gH - (v/100)*gH;
+      ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left+gW, y);
+      ctx.stroke();
+      ctx.fillStyle = '#78716c'; ctx.font = '10px Georgia';
+      ctx.fillText(v+'%', 2, y+4);
+    });
+
+    // Line
+    ctx.beginPath();
+    ctx.strokeStyle = '#c2410c';
+    ctx.lineWidth = 2.5;
+    data.forEach((d,i) => {
+      const x = pad.left + (d.day/7)*gW;
+      const y = pad.top + gH - (d.val/100)*gH;
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+
+    // Dots + risk highlights
+    data.forEach(d => {
+      const x = pad.left + (d.day/7)*gW;
+      const y = pad.top + gH - (d.val/100)*gH;
+      const risk = d.val < 40;
+      ctx.beginPath();
+      ctx.arc(x, y, risk ? 6 : 4, 0, Math.PI*2);
+      ctx.fillStyle = risk ? '#ef4444' : '#c2410c';
+      ctx.fill();
+      if (risk) {
+        ctx.strokeStyle = '#fca5a5'; ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    });
+
+    // X labels
+    ctx.fillStyle = '#44403c'; ctx.font = '10px Georgia';
+    ['Start','D1','D2','D3','D4','D5','D6','D7'].forEach((label,i) => {
+      const x = pad.left + (i/7)*gW;
+      ctx.fillText(label, x-8, H-6);
+    });
+
+    // Tooltip on hover
+    canvas.onmousemove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      let closest = null, minDist = 999;
+      data.forEach(d => {
+        const x = pad.left + (d.day/7)*gW;
+        const dist = Math.abs(mx - x);
+        if (dist < minDist) { minDist = dist; closest = d; }
+      });
+      if (closest && minDist < 30) {
+        const x = pad.left + (closest.day/7)*gW;
+        const y = pad.top + gH - (closest.val/100)*gH;
+        tooltip.style.display = 'block';
+        tooltip.style.left = (x + 10) + 'px';
+        tooltip.style.top  = (y - 10) + 'px';
+        tooltip.innerHTML = `<strong>Day ${closest.day}</strong>: ${closest.val.toFixed(0)}% engagement<br><em>${closest.note}</em>`;
+      } else {
+        tooltip.style.display = 'none';
+      }
+    };
+    canvas.onmouseleave = () => { tooltip.style.display = 'none'; };
+
+    // Summary log
+    const minE = Math.min(...data.map(d=>d.val));
+    const riskDays = data.filter(d=>d.val<40 && d.day>0).map(d=>'Day '+d.day);
+    if (riskDays.length) {
+      simLogEl.innerHTML = `⚠️ <strong>Dropout risk detected on ${riskDays.join(', ')}</strong> (engagement below 40%). Hover dots for details. Consider adding a badge or worked example on those days.`;
+    } else {
+      simLogEl.innerHTML = `✅ Good sequence! Estimated minimum engagement: <strong>${minE.toFixed(0)}%</strong>. Hover dots for day-by-day breakdown.`;
+    }
+  }
+
+  document.getElementById('msb-run').addEventListener('click', runSimulation);
+  document.getElementById('msb-reset').addEventListener('click', () => {
+    slots.fill(null);
+    simLogEl.textContent = '';
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
