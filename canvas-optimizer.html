@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas HTML Optimizer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Syne:wght@400;600;700;800&display=swap');
+  :root {
+    --bg:#0f0e0e; --surface:#1a1918; --surface2:#242220; --border:#2e2b28;
+    --accent:#f97316; --accent2:#fbbf24; --success:#4ade80; --danger:#f87171;
+    --purple:#a78bfa; --text:#f5f0eb; --muted:#78716c;
+    --mono:'DM Mono',monospace; --sans:'Syne',sans-serif;
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;line-height:1.6}
+  header{padding:2rem 2.5rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
+  .logo{font-size:1.4rem;font-weight:800;letter-spacing:-0.02em}
+  .logo span{color:var(--accent)}
+  .tagline{font-size:0.82rem;color:var(--muted);font-family:var(--mono)}
+  main{max-width:900px;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+  .drop-zone{border:2px dashed var(--border);border-radius:16px;padding:3.5rem 2rem;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;background:var(--surface);position:relative;margin-bottom:1.5rem}
+  .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:#1f1b16}
+  .drop-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .drop-icon{font-size:2.5rem;margin-bottom:0.75rem;display:block}
+  .drop-title{font-size:1.1rem;font-weight:700;margin-bottom:0.3rem}
+  .drop-sub{font-size:0.85rem;color:var(--muted);font-family:var(--mono)}
+  .file-info{display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;font-family:var(--mono);font-size:0.88rem;gap:1rem;align-items:center;flex-wrap:wrap}
+  .file-info.show{display:flex}
+  .file-name{color:var(--accent2);font-weight:500;flex:1}
+  .file-size{color:var(--muted)}
+  .analysis{display:none;margin-bottom:1.5rem}
+  .analysis.show{display:block}
+  .section-label{font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem;font-family:var(--mono)}
+  .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-bottom:1.25rem}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.9rem 1rem}
+  .stat-card .val{font-size:1.4rem;font-weight:800;font-family:var(--mono);line-height:1;margin-bottom:0.2rem}
+  .stat-card .lbl{font-size:0.75rem;color:var(--muted);font-family:var(--mono)}
+  .val.danger{color:var(--danger)}.val.warn{color:var(--accent2)}.val.ok{color:var(--success)}.val.purple{color:var(--purple)}
+  .issues{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:1.25rem}
+  .issue-row{display:flex;align-items:flex-start;gap:0.75rem;padding:0.75rem 1rem;border-bottom:1px solid var(--border);font-size:0.85rem}
+  .issue-row:last-child{border-bottom:none}
+  .issue-icon{font-size:1rem;flex-shrink:0;margin-top:1px}
+  .issue-text{color:var(--text);line-height:1.5}
+  .issue-text strong{font-weight:600}
+  .issue-sub{color:var(--muted);font-size:0.8rem;font-family:var(--mono)}
+  .widgets-found{display:none;margin-bottom:1.25rem}
+  .widgets-found.show{display:block}
+  .widget-cards{display:grid;gap:0.6rem;margin-top:0.5rem}
+  .widget-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0.85rem 1.1rem;display:flex;align-items:center;gap:0.85rem}
+  .widget-card-icon{font-size:1.3rem;flex-shrink:0}
+  .widget-card-info{flex:1}
+  .widget-card-title{font-size:0.9rem;font-weight:700}
+  .widget-card-sub{font-size:0.78rem;color:var(--muted);font-family:var(--mono)}
+  .widget-card-badge{font-size:0.7rem;font-weight:700;font-family:var(--mono);background:#4c1d95;color:#ddd6fe;padding:2px 8px;border-radius:99px;white-space:nowrap}
+  .options{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;display:none}
+  .options.show{display:block}
+  .opt-group-label{font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);font-family:var(--mono);padding:0.5rem 0 0.3rem}
+  .opt-row{display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0;border-bottom:1px solid var(--border);cursor:pointer}
+  .opt-row:last-child{border-bottom:none}
+  .opt-row input[type="checkbox"]{accent-color:var(--accent);width:16px;height:16px;cursor:pointer;flex-shrink:0}
+  .opt-label{font-size:0.9rem}
+  .opt-desc{font-size:0.78rem;color:var(--muted);font-family:var(--mono)}
+  .btn-optimize{width:100%;padding:1rem;background:var(--accent);color:#0f0e0e;border:none;border-radius:10px;font-size:1rem;font-weight:800;font-family:var(--sans);cursor:pointer;letter-spacing:0.02em;transition:opacity 0.15s,transform 0.1s;margin-bottom:1.5rem;display:none}
+  .btn-optimize.show{display:block}
+  .btn-optimize:hover{opacity:0.9;transform:translateY(-1px)}
+  .btn-optimize:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+  .progress-wrap{display:none;margin-bottom:1.5rem}
+  .progress-wrap.show{display:block}
+  .progress-bar-bg{background:var(--surface2);border-radius:99px;height:6px;overflow:hidden;margin-bottom:0.5rem}
+  .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;width:0%;transition:width 0.3s ease}
+  .progress-log{font-family:var(--mono);font-size:0.8rem;color:var(--muted)}
+  .results{display:none}
+  .results.show{display:block}
+  .result-compare{display:grid;grid-template-columns:1fr auto 1fr;gap:0.75rem;margin-bottom:1.25rem;align-items:center}
+  .result-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center}
+  .result-box .big{font-size:1.8rem;font-weight:800;font-family:var(--mono);display:block;line-height:1;margin-bottom:0.25rem}
+  .result-box .small{font-size:0.78rem;color:var(--muted);font-family:var(--mono)}
+  .arrow-box{font-size:1.4rem;color:var(--success);text-align:center}
+  .dl-section{margin-bottom:1.25rem}
+  .dl-section-title{font-size:0.72rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem;font-family:var(--mono)}
+  .download-btns{display:flex;gap:0.65rem;flex-wrap:wrap}
+  .btn-dl{flex:1 1 180px;padding:0.8rem 1rem;border-radius:10px;border:none;font-family:var(--sans);font-weight:700;font-size:0.85rem;cursor:pointer;transition:opacity 0.15s;text-align:center}
+  .btn-dl:hover{opacity:0.85}
+  .btn-dl.primary{background:var(--success);color:#0f0e0e}
+  .btn-dl.secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+  .widget-dl-list{display:grid;gap:0.5rem;margin-top:0.5rem}
+  .widget-dl-row{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.7rem 1rem;display:flex;align-items:center;gap:0.75rem}
+  .widget-dl-name{flex:1;font-size:0.88rem}
+  .widget-dl-size{font-size:0.78rem;color:var(--muted);font-family:var(--mono)}
+  .btn-dl-small{padding:0.35rem 0.85rem;border-radius:6px;border:none;font-family:var(--sans);font-weight:700;font-size:0.78rem;cursor:pointer;background:var(--purple);color:#0f0e0e;transition:opacity 0.15s}
+  .btn-dl-small:hover{opacity:0.85}
+  .result-notes{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-top:1rem;font-size:0.84rem;line-height:1.7;color:var(--muted);font-family:var(--mono)}
+  .result-notes strong{color:var(--text)}
+  @media(max-width:500px){.result-compare{grid-template-columns:1fr}.arrow-box{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Canvas<span>Ready</span></div>
+  <div class="tagline">// HTML optimizer + widget extractor for Canvas LMS</div>
+</header>
+<main>
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".html,.htm">
+    <span class="drop-icon">📄</span>
+    <div class="drop-title">Drop your HTML file here</div>
+    <div class="drop-sub">or click to browse · .html / .htm only</div>
+  </div>
+  <div class="file-info" id="fileInfo">
+    <span class="file-name" id="fileName">—</span>
+    <span class="file-size" id="fileSize">—</span>
+  </div>
+  <div class="analysis" id="analysis">
+    <div class="section-label">Analysis</div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="issues" id="issuesList"></div>
+  </div>
+  <div class="widgets-found" id="widgetsFound">
+    <div class="section-label">Interactive tools detected</div>
+    <div class="widget-cards" id="widgetCards"></div>
+  </div>
+  <div class="options" id="options">
+    <div class="section-label">Optimisation options</div>
+    <div class="opt-group-label">Canvas HTML</div>
+    <label class="opt-row"><input type="checkbox" id="opt-inline" checked><div><div class="opt-label">Convert CSS to inline styles</div><div class="opt-desc">Canvas strips &lt;style&gt; blocks — converts all classes to inline</div></div></label>
+    <label class="opt-row"><input type="checkbox" id="opt-images" checked><div><div class="opt-label">Extract base64 images</div><div class="opt-desc">Saves embedded images separately, replaces with &lt;img src=""&gt;</div></div></label>
+    <label class="opt-row"><input type="checkbox" id="opt-comments" checked><div><div class="opt-label">Strip HTML comments</div><div class="opt-desc">Removes &lt;!-- ... --&gt; blocks</div></div></label>
+    <label class="opt-row"><input type="checkbox" id="opt-head" checked><div><div class="opt-label">Extract body content only</div><div class="opt-desc">Canvas ignores &lt;head&gt; — keeps only the body</div></div></label>
+    <label class="opt-row"><input type="checkbox" id="opt-scripts"><div><div class="opt-label">Remove &lt;script&gt; tags from Canvas HTML</div><div class="opt-desc">Canvas strips JS on paste — tick for clean static version</div></div></label>
+    <div class="opt-group-label" style="margin-top:0.75rem">Widget extraction</div>
+    <label class="opt-row"><input type="checkbox" id="opt-widgets" checked><div><div class="opt-label">Extract each interactive tool as a separate HTML</div><div class="opt-desc">Each widget gets its own self-contained file, ready to host</div></div></label>
+  </div>
+  <button class="btn-optimize" id="btnOptimize">⚡ Optimise for Canvas</button>
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div class="progress-log" id="progressLog">Starting...</div>
+  </div>
+  <div class="results" id="results">
+    <div class="section-label">Result</div>
+    <div class="result-compare">
+      <div class="result-box"><span class="big danger" id="resBefore">—</span><span class="small">Original size</span></div>
+      <div class="arrow-box">→</div>
+      <div class="result-box"><span class="big ok" id="resAfter">—</span><span class="small">Optimised HTML</span></div>
+    </div>
+    <div class="dl-section">
+      <div class="dl-section-title">Canvas page HTML</div>
+      <div class="download-btns">
+        <button class="btn-dl primary" id="btnDownloadHTML">⬇ Download optimised HTML</button>
+        <button class="btn-dl secondary" id="btnDownloadImages" style="display:none">⬇ Download images</button>
+      </div>
+    </div>
+    <div class="dl-section" id="widgetDlSection" style="display:none">
+      <div class="dl-section-title">Extracted interactive tools</div>
+      <div class="widget-dl-list" id="widgetDlList"></div>
+    </div>
+    <div class="result-notes" id="resultNotes"></div>
+  </div>
+</main>
+<script>
+let originalFile=null,originalText='',extractedImages=[],optimisedHTML='',extractedWidgets=[];
+const CSS_VARS={'--page-bg':'#faf5f0','--card-bg':'#ffffff','--elevated':'#f5ebe0','--accent':'#c2410c','--accent-light':'#ea580c','--warm':'#92400e','--text-primary':'#1c1917','--text-secondary':'#44403c','--text-muted':'#78716c','--success':'#166534','--heading-font':'Georgia,serif','--body-font':'system-ui,sans-serif'};
+function resolveVars(s){return s.replace(/var\(([^)]+)\)/g,(_,v)=>CSS_VARS[v.trim()]||v.trim())}
+const CLASS_STYLES={'chapter-header':'text-align:center;margin-bottom:3rem;padding-bottom:2rem;border-bottom:1px solid #c2410c20;','chapter-label':'display:inline-block;font-family:Georgia,serif;font-size:0.8rem;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;color:#c2410c;margin-bottom:0.75rem;','chapter-title':'font-family:Georgia,serif;font-size:2.4rem;font-weight:700;color:#1c1917;line-height:1.2;margin-bottom:0.75rem;','chapter-subtitle':'font-size:1.05rem;color:#44403c;font-style:italic;max-width:600px;margin:0 auto;','hook-box':'background:#ffffff;border-radius:12px;padding:1.75rem;border-left:3px solid #c2410c;margin-bottom:2.5rem;','key-term':'background:rgba(146,64,14,0.1);padding:2px 6px;border-radius:4px;color:#92400e;font-weight:600;','callout':'background:#f5ebe0;border-radius:8px;padding:1.25rem 1.5rem;margin:1.5rem 0;border-left:3px solid #c2410c;','callout-label':'font-size:0.8rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:#c2410c;margin-bottom:0.5rem;','widget-container':'background:#ffffff;border:1px solid rgba(194,65,12,0.12);border-radius:12px;padding:1.5rem;margin:2rem 0;','takeaways':'background:#ffffff;border-radius:12px;padding:1.75rem;margin:2.5rem 0;border:1px solid rgba(194,65,12,0.18);','looking-ahead':'background:linear-gradient(135deg,rgba(194,65,12,0.06),rgba(234,88,12,0.06));border-radius:12px;padding:1.5rem;margin:2rem 0;border:1px solid rgba(194,65,12,0.12);','references':'border-top:2px solid rgba(194,65,12,0.18);margin-top:3rem;padding-top:1.5rem;','section-divider':'height:1px;border:none;margin:2.5rem auto;background:linear-gradient(90deg,transparent,rgba(194,65,12,0.25),transparent);','container':'max-width:800px;margin:0 auto;padding:3rem 1.5rem 4rem;'};
+const TAG_STYLES={'h2':'font-family:Georgia,serif;font-size:1.6rem;font-weight:700;color:#1c1917;margin:2.5rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid rgba(194,65,12,0.18);','h3':'font-family:Georgia,serif;font-size:1.25rem;font-weight:600;color:#ea580c;margin:2rem 0 0.75rem;','p':'margin-bottom:1.25rem;color:#1c1917;','blockquote':'border-left:3px solid #c2410c;padding:0.75rem 1.25rem;margin:1.5rem 0;background:#ffffff;border-radius:0 8px 8px 0;','li':'margin-bottom:0.5rem;color:#1c1917;','ul':'padding-left:1.5rem;margin-bottom:1.25rem;','ol':'padding-left:1.5rem;margin-bottom:1.25rem;'};
+
+function detectWidgets(html){
+  const widgets=[];
+  // Match id="widget-*"
+  const idRe=/<div[^>]+id="(widget-[^"]+)"[^>]*>/gi;
+  let m;
+  while((m=idRe.exec(html))!==null){
+    const block=extractBalancedDiv(html,m.index);
+    if(block){const title=extractWidgetTitle(block)||m[1];widgets.push({id:m[1],title,html:block,startIdx:m.index});}
+  }
+  // Match class="widget-container" not already captured
+  const clsRe=/<div[^>]+class="[^"]*widget-container[^"]*"[^>]*>/gi;
+  while((m=clsRe.exec(html))!==null){
+    if(!widgets.some(w=>w.startIdx===m.index)){
+      const block=extractBalancedDiv(html,m.index);
+      if(block){const title=extractWidgetTitle(block)||('Tool '+(widgets.length+1));widgets.push({id:'widget-'+widgets.length,title,html:block,startIdx:m.index});}
+    }
+  }
+  return widgets;
+}
+
+function extractBalancedDiv(html,startIdx){
+  let depth=0,i=startIdx,started=false;
+  while(i<html.length){
+    if(html.slice(i,i+4)==='<div'){depth++;started=true;}
+    if(html.slice(i,i+6)==='</div>'){depth--;if(started&&depth===0)return html.slice(startIdx,i+6);}
+    i++;
+  }
+  return null;
+}
+
+function extractWidgetTitle(html){
+  for(const tag of['h2','h3','h4','h1']){const m=html.match(new RegExp('<'+tag+'[^>]*>([^<]+)</'+tag+'>','i'));if(m)return m[1].trim();}
+  return null;
+}
+
+function extractScripts(html){const s=[];const re=/<script[^>]*>([\s\S]*?)<\/script>/gi;let m;while((m=re.exec(html))!==null)s.push(m[1]);return s.join('\n\n');}
+function extractStyles(html){const s=[];const re=/<style[^>]*>([\s\S]*?)<\/style>/gi;let m;while((m=re.exec(html))!==null)s.push(m[1]);return s.join('\n');}
+
+// ── FIXED JS for CLB widget ──
+const FIXED_CLB_JS = `
+(function() {
+  const blocks = [
+    { id:'video',        name:'Short video (3 min)',  load:{in:2,ex:1,ge:2}, nov:{in:1,ex:1,ge:0},  exp:{in:0,ex:0,ge:0}  },
+    { id:'case',         name:'Case vignette',        load:{in:1,ex:1,ge:2}, nov:{in:0,ex:1,ge:1},  exp:{in:0,ex:0,ge:0}  },
+    { id:'diagram',      name:'Diagram',              load:{in:2,ex:1,ge:2}, nov:{in:1,ex:1,ge:1},  exp:{in:0,ex:-1,ge:0} },
+    { id:'reflect',      name:'Reflective prompt',    load:{in:0,ex:1,ge:2}, nov:{in:0,ex:0,ge:1},  exp:{in:0,ex:0,ge:1}  },
+    { id:'quiz',         name:'Two-item quiz',        load:{in:1,ex:0,ge:3}, nov:{in:0,ex:0,ge:2},  exp:{in:0,ex:0,ge:1}  },
+    { id:'anecdote',     name:'Anecdote',             load:{in:0,ex:2,ge:1}, nov:{in:0,ex:1,ge:0},  exp:{in:0,ex:1,ge:0}  },
+    { id:'data',         name:'Data table',           load:{in:2,ex:2,ge:1}, nov:{in:1,ex:1,ge:0},  exp:{in:0,ex:0,ge:0}  },
+    { id:'instructions', name:'Instructions',         load:{in:1,ex:0,ge:2}, nov:{in:-1,ex:-1,ge:1},exp:{in:0,ex:0,ge:0}  },
+  ];
+  const reasons = {
+    instructions:'Removing clear directions often harms novices by increasing extraneous search.',
+    anecdote:'Anecdotes can add extraneous load without advancing the schema.',
+    diagram:'Diagrams help if paired with directions; without them they can confuse.',
+    quiz:'A quick check supports germane load via feedback.',
+    video:'Short videos help when concise; long or unfocused clips can distract.',
+    data:'Dense tables raise intrinsic and extraneous load for novices.',
+    reflect:'Reflection boosts germane load after examples.',
+    case:'Concrete cases build transfer if brief and aligned.',
+  };
+  const state = {};
+  blocks.forEach(b => state[b.id] = 'pool');
+  let clbDragId = null;
+  const profileSel      = document.getElementById('clb-profile');
+  const poolEl          = document.getElementById('clb-pool');
+  const predictBlockSel = document.getElementById('clb-predict-block');
+  const feedbackEl      = document.getElementById('clb-feedback');
+  const listEls = {
+    essential: document.getElementById('list-essential'),
+    nice:      document.getElementById('list-nice'),
+    remove:    document.getElementById('list-remove'),
+  };
+  function getLoads(profile, stateOverride) {
+    const s = stateOverride || state;
+    let intr=0, extr=0, germ=0;
+    blocks.forEach(b => {
+      const loc = s[b.id];
+      if (loc === 'remove' || loc === 'pool') return;
+      const adj = profile === 'novice' ? b.nov : b.exp;
+      let i = b.load.in + (adj.in||0), e = b.load.ex + (adj.ex||0), g = b.load.ge + (adj.ge||0);
+      if (loc === 'essential') { e *= 0.6; g *= 1.1; } else if (loc === 'nice') { e *= 1.25; g *= 0.9; }
+      if (b.id === 'diagram' && s['instructions'] === 'essential' && profile === 'novice') { e *= 0.8; g *= 1.1; }
+      intr += Math.max(0,i); extr += Math.max(0,e); germ += Math.max(0,g);
+    });
+    return { intr, extr, germ };
+  }
+  function drawBar() {
+    const { intr, extr, germ } = getLoads(profileSel.value);
+    const total = Math.max(1, intr+extr+germ);
+    document.getElementById('bar-intr').style.width = (intr/total*100).toFixed(1)+'%';
+    document.getElementById('bar-extr').style.width = (extr/total*100).toFixed(1)+'%';
+    document.getElementById('bar-germ').style.width = (germ/total*100).toFixed(1)+'%';
+  }
+  function makeCard(block) {
+    const btn = document.createElement('button');
+    btn.className = 'card-btn'; btn.textContent = block.name; btn.dataset.id = block.id; btn.draggable = true;
+    btn.addEventListener('dragstart', e => { clbDragId = block.id; e.dataTransfer.setData('text/plain', 'clb:' + block.id); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => btn.classList.add('dragging'), 0); });
+    btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
+    btn.addEventListener('click', () => { const order = ['pool','essential','nice','remove']; state[block.id] = order[(order.indexOf(state[block.id])+1) % order.length]; render(); });
+    return btn;
+  }
+  function setupDropZone(el, targetBin) {
+    el.addEventListener('dragover', e => { if (clbDragId) { e.preventDefault(); el.classList.add('drag-over'); } });
+    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('drag-over'); });
+    el.addEventListener('drop', e => { e.preventDefault(); el.classList.remove('drag-over'); const data = e.dataTransfer.getData('text/plain'); if (!data.startsWith('clb:')) return; state[data.replace('clb:','')] = targetBin; clbDragId = null; render(); });
+  }
+  function render() {
+    poolEl.innerHTML = ''; Object.values(listEls).forEach(l => l.innerHTML = '');
+    blocks.forEach(b => { const card = makeCard(b); const loc = state[b.id]; if (loc === 'pool') poolEl.appendChild(card); else listEls[loc].appendChild(card); });
+    predictBlockSel.innerHTML = '';
+    blocks.forEach(b => { const opt = document.createElement('option'); opt.value = b.id; opt.textContent = b.name; predictBlockSel.appendChild(opt); });
+    drawBar();
+  }
+  setupDropZone(poolEl, 'pool');
+  setupDropZone(document.getElementById('bin-essential'), 'essential');
+  setupDropZone(document.getElementById('bin-nice'), 'nice');
+  setupDropZone(document.getElementById('bin-remove'), 'remove');
+  profileSel.addEventListener('change', drawBar);
+  document.getElementById('clb-predict-btn').addEventListener('click', () => {
+    const id = predictBlockSel.value, userPred = document.getElementById('clb-predict-effect').value, b = blocks.find(x => x.id === id);
+    if (state[id] === 'remove') { feedbackEl.textContent = 'This block is already in Remove — move it first.'; return; }
+    const orig = getLoads('novice'), simLoads = getLoads('novice', Object.assign({}, state, {[id]:'remove'}));
+    const perf = s => (s.germ - s.extr) - (s.intr > 8 ? (s.intr-8)*0.5 : 0);
+    const delta = perf(simLoads) - perf(orig);
+    const model = delta > 0.4 ? 'help' : delta < -0.4 ? 'harm' : 'nochange';
+    const verdict = userPred === model ? '✅ Correct!' : '❌ Not quite.';
+    const dir = model==='help'?'helps novices':model==='harm'?'harms novices':'has little net effect';
+    feedbackEl.textContent = verdict + ' Removing "' + b.name + '" ' + dir + '. ' + reasons[id];
+  });
+  document.getElementById('clb-reset').addEventListener('click', () => { blocks.forEach(b => state[b.id] = 'pool'); feedbackEl.textContent = ''; render(); });
+  document.getElementById('clb-suggest').addEventListener('click', () => {
+    ['instructions','diagram','quiz','reflect'].forEach(id => state[id] = 'essential');
+    state['anecdote'] = 'remove'; ['video','case','data'].forEach(id => state[id] = 'nice');
+    feedbackEl.textContent = 'Auto-suggested for novices: Instructions + Diagram + Quiz + Reflection → Essential. Anecdote → Remove.';
+    render();
+  });
+  render();
+})();
+`;
+
+// ── FIXED JS for MSB widget ──
+const FIXED_MSB_JS = `
+(function() {
+  const actions = [
+    { id:'goal',     name:'One-sentence goal',      clarity:20, energy:10,  dropoutRisk:-15, note:'Sets clear expectations — crucial for Rider clarity on Day 1.' },
+    { id:'worked',   name:'Worked example',         clarity:25, energy:10,  dropoutRisk:-20, note:'Reduces extraneous load; novices succeed earlier.' },
+    { id:'predict',  name:'Predict-before-peek',    clarity:15, energy:20,  dropoutRisk:-10, note:'Builds germane load and autonomy — energises the Elephant.' },
+    { id:'quiz1',    name:'One-item check',         clarity:10, energy:15,  dropoutRisk:-15, note:'Immediate feedback closes the learning loop.' },
+    { id:'badge',    name:'Progress badge',         clarity:5,  energy:30,  dropoutRisk:-20, note:'Visible win — strong Elephant motivator.' },
+    { id:'case',     name:'Mini case study',        clarity:20, energy:15,  dropoutRisk:-10, note:'Transfers knowledge to realistic context.' },
+    { id:'recap',    name:'2-min recap',            clarity:15, energy:5,   dropoutRisk:-10, note:'Spaced retrieval — solidifies prior schema.' },
+    { id:'dense',    name:'Dense lecture (10 min)', clarity:-5, energy:-20, dropoutRisk:25,  note:'High extraneous load; avoid without scaffolding.' },
+    { id:'longtask', name:'10-item quiz',           clarity:5,  energy:-15, dropoutRisk:20,  note:'Delay of feedback discourages novices.' },
+  ];
+  const slots = [null,null,null,null,null];
+  let msbDragId = null, msbDragFromSlot = null;
+  const bankEl=document.getElementById('msb-cards'), clarityEl=document.getElementById('msb-clarity'), energyEl=document.getElementById('msb-energy');
+  const clarityValEl=document.getElementById('msb-clarity-val'), energyValEl=document.getElementById('msb-energy-val');
+  const simLogEl=document.getElementById('msb-sim-log'), canvas=document.getElementById('msb-graph'), tooltip=document.getElementById('msb-tooltip');
+  function makeCard(action, slotIdx) {
+    const btn = document.createElement('button');
+    btn.className = 'card-btn'; btn.textContent = action.name; btn.dataset.id = action.id; btn.draggable = true;
+    btn.addEventListener('dragstart', e => { msbDragId = action.id; msbDragFromSlot = slotIdx; e.dataTransfer.setData('text/plain', 'msb:' + action.id); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => btn.classList.add('dragging'), 0); });
+    btn.addEventListener('dragend', () => btn.classList.remove('dragging'));
+    btn.addEventListener('click', () => { if (slotIdx === null) { const idx = slots.indexOf(null); if (idx === -1) return; slots[idx] = action.id; } else { slots[slotIdx] = null; } render(); });
+    return btn;
+  }
+  function setupSlotDrop(slotEl, slotIdx) {
+    slotEl.addEventListener('dragover', e => { if (msbDragId) { e.preventDefault(); slotEl.classList.add('drag-over'); } });
+    slotEl.addEventListener('dragleave', e => { if (!slotEl.contains(e.relatedTarget)) slotEl.classList.remove('drag-over'); });
+    slotEl.addEventListener('drop', e => { e.preventDefault(); slotEl.classList.remove('drag-over'); const data = e.dataTransfer.getData('text/plain'); if (!data.startsWith('msb:')) return; const id = data.replace('msb:',''); if (msbDragFromSlot !== null) slots[msbDragFromSlot] = null; slots[slotIdx] = id; msbDragId = null; msbDragFromSlot = null; render(); });
+  }
+  function setupBankDrop() {
+    bankEl.addEventListener('dragover', e => { if (msbDragId) { e.preventDefault(); bankEl.style.outline = '2px dashed #c2410c'; } });
+    bankEl.addEventListener('dragleave', e => { if (!bankEl.contains(e.relatedTarget)) bankEl.style.outline = ''; });
+    bankEl.addEventListener('drop', e => { e.preventDefault(); bankEl.style.outline = ''; const data = e.dataTransfer.getData('text/plain'); if (!data.startsWith('msb:')) return; if (msbDragFromSlot !== null) slots[msbDragFromSlot] = null; msbDragId = null; msbDragFromSlot = null; render(); });
+  }
+  function updateMeters() {
+    let clarity=0, energy=0;
+    slots.forEach(id => { if (!id) return; const a = actions.find(x => x.id === id); if (a) { clarity += a.clarity; energy += a.energy; } });
+    clarity = Math.min(100,Math.max(0,clarity)); energy = Math.min(100,Math.max(0,energy));
+    clarityEl.value = clarity; energyEl.value = energy; clarityValEl.textContent = clarity+'%'; energyValEl.textContent = energy+'%';
+  }
+  function render() {
+    bankEl.innerHTML = '';
+    actions.forEach(a => { if (!slots.includes(a.id)) bankEl.appendChild(makeCard(a, null)); });
+    slots.forEach((id, i) => { const dropEl = document.getElementById('msb-drop-'+i); dropEl.innerHTML = ''; if (id) { const a = actions.find(x => x.id === id); dropEl.appendChild(makeCard(a, i)); } });
+    updateMeters(); clearGraph();
+  }
+  document.querySelectorAll('.msb-slot').forEach(slot => setupSlotDrop(slot, parseInt(slot.dataset.index)));
+  setupBankDrop();
+  function clearGraph() { canvas.width = canvas.clientWidth||600; canvas.height = 160; canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height); simLogEl.textContent = ''; tooltip.style.display = 'none'; }
+  function runSimulation() {
+    if (!slots.some(Boolean)) { simLogEl.textContent = 'Place at least one micro-action first.'; return; }
+    canvas.width = canvas.clientWidth||600; canvas.height = 160;
+    const ctx = canvas.getContext('2d'); ctx.clearRect(0,0,canvas.width,canvas.height);
+    const W=canvas.width, H=canvas.height, pad={top:20,right:20,bottom:30,left:40}, gW=W-pad.left-pad.right, gH=H-pad.top-pad.bottom;
+    let engagement=60; const data=[{day:0,val:engagement,note:'Starting engagement'}];
+    for (let i=0;i<7;i++) { const a=i<5?actions.find(x=>x.id===slots[i]):null; if(a){engagement+=(a.clarity*0.3+a.energy*0.5)*0.3+a.dropoutRisk*0.4;}else{engagement-=8;} engagement=Math.min(100,Math.max(5,engagement)); data.push({day:i+1,val:engagement,note:a?a.note:'No content — learners drift.'}); }
+    ctx.strokeStyle='#c2410c18'; ctx.lineWidth=1;
+    [25,50,75,100].forEach(v=>{const y=pad.top+gH-(v/100)*gH;ctx.beginPath();ctx.moveTo(pad.left,y);ctx.lineTo(pad.left+gW,y);ctx.stroke();ctx.fillStyle='#78716c';ctx.font='10px Georgia';ctx.fillText(v+'%',2,y+4);});
+    ctx.beginPath();ctx.strokeStyle='#c2410c';ctx.lineWidth=2.5;
+    data.forEach((d,i)=>{const x=pad.left+(d.day/7)*gW,y=pad.top+gH-(d.val/100)*gH;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.stroke();
+    data.forEach(d=>{const x=pad.left+(d.day/7)*gW,y=pad.top+gH-(d.val/100)*gH,risk=d.val<40;ctx.beginPath();ctx.arc(x,y,risk?6:4,0,Math.PI*2);ctx.fillStyle=risk?'#ef4444':'#c2410c';ctx.fill();if(risk){ctx.strokeStyle='#fca5a5';ctx.lineWidth=2;ctx.stroke();}});
+    ctx.fillStyle='#44403c';ctx.font='10px Georgia';['Start','D1','D2','D3','D4','D5','D6','D7'].forEach((lbl,i)=>{ctx.fillText(lbl,pad.left+(i/7)*gW-8,H-6);});
+    canvas.onmousemove=e=>{const rect=canvas.getBoundingClientRect(),mx=e.clientX-rect.left;let closest=null,minDist=999;data.forEach(d=>{const dist=Math.abs(pad.left+(d.day/7)*gW-mx);if(dist<minDist){minDist=dist;closest=d;}});if(closest&&minDist<30){tooltip.style.display='block';tooltip.style.left=(pad.left+(closest.day/7)*gW+10)+'px';tooltip.style.top=(pad.top+gH-(closest.val/100)*gH-10)+'px';tooltip.innerHTML='<strong>Day '+closest.day+'</strong>: '+closest.val.toFixed(0)+'% engagement<br><em>'+closest.note+'</em>';}else{tooltip.style.display='none';}};
+    canvas.onmouseleave=()=>{tooltip.style.display='none';};
+    const minE=Math.min(...data.map(d=>d.val)),riskDays=data.filter(d=>d.val<40&&d.day>0).map(d=>'Day '+d.day);
+    simLogEl.innerHTML=riskDays.length?'⚠️ <strong>Dropout risk on '+riskDays.join(', ')+'</strong> (below 40%). Hover dots for details.':'✅ Good sequence! Minimum engagement: <strong>'+minE.toFixed(0)+'%</strong>. Hover dots for details.';
+  }
+  document.getElementById('msb-run').addEventListener('click', runSimulation);
+  document.getElementById('msb-reset').addEventListener('click', ()=>{slots.fill(null);simLogEl.textContent='';render();});
+  render();
+})();
+`;
+
+function buildWidgetHTML(widget,allScripts,allStyles,chapterTitle){
+  // Detect which fixed JS to use based on widget id/title
+  const isClb = widget.id.includes('load-balancer') || widget.title.toLowerCase().includes('load balancer') || widget.title.toLowerCase().includes('cognitive');
+  const isMsb = widget.id.includes('sequence') || widget.title.toLowerCase().includes('sequence') || widget.title.toLowerCase().includes('micro-step');
+  const fixedJs = isClb ? FIXED_CLB_JS : isMsb ? FIXED_MSB_JS : allScripts;
+
+  return`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${widget.title}</title>
+<style>
+:root{--page-bg:#faf5f0;--card-bg:#ffffff;--elevated:#f5ebe0;--accent:#c2410c;--accent-light:#ea580c;--warm:#92400e;--text-primary:#1c1917;--text-secondary:#44403c;--text-muted:#78716c;--success:#166534;}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--page-bg);font-family:Georgia,serif;color:var(--text-primary);padding:2rem 1.5rem 3rem;line-height:1.7}
+.pool-grid{display:grid;grid-template-columns:1fr;gap:0.45rem;min-height:40px}
+.card-btn{background:#f5ebe0;color:#1c1917;border:1px solid #c2410c25;border-radius:6px;padding:0.4rem 0.65rem;font-size:0.85rem;text-align:left;cursor:grab;font-family:Georgia,serif;width:100%;transition:background 0.15s}
+.card-btn:hover{background:#edddd0}
+.card-btn.dragging{opacity:0.4}
+.bin{flex:1 1 160px;min-height:100px;background:#f5ebe0;border:1.5px dashed #c2410c40;border-radius:8px;padding:0.6rem;transition:border-color 0.15s,background 0.15s}
+.bin.drag-over{border-color:#c2410c;background:#fde8de}
+.bin-list{min-height:55px;display:grid;gap:0.35rem}
+.msb-slot{min-height:80px;background:#f5ebe0;border:1.5px dashed #c2410c40;border-radius:8px;padding:0.5rem;transition:border-color 0.15s,background 0.15s}
+.msb-slot.drag-over{border-color:#c2410c;background:#fde8de}
+.msb-drop{min-height:40px;display:grid;gap:0.3rem}
+.widget-wrap{max-width:860px;margin:0 auto}
+.back-label{font-size:0.78rem;color:#78716c;font-family:system-ui,sans-serif;margin-bottom:1rem;display:block}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:#f5ebe0;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#c2410c;border:2px solid #ea580c;cursor:pointer}
+select,button{font-family:Georgia,serif}
+button:not(.card-btn){background:#c2410c;color:#fff;border:none;border-radius:6px;padding:0.45rem 1rem;font-size:0.85rem;font-weight:600;cursor:pointer}
+button:not(.card-btn):hover{opacity:0.85}
+label{display:block;font-size:0.85rem;font-weight:600;color:#44403c;margin-bottom:0.3rem}
+select{background:#f5ebe0;color:#1c1917;border:1px solid #c2410c30;border-radius:6px;padding:0.4rem 0.7rem;font-size:0.9rem}
+#msb-graph{width:100%;height:160px;background:#f5ebe0;border-radius:8px;display:block}
+#msb-tooltip{position:absolute;display:none;background:#fff;border:1px solid #c2410c30;border-radius:6px;padding:0.3rem 0.5rem;font-size:0.82rem;color:#44403c;pointer-events:none;max-width:220px;line-height:1.4}
+#clb-bar{width:100%;height:20px;background:#f5ebe0;border-radius:6px;overflow:hidden;display:flex}
+.bar-seg{height:100%;transition:width 0.3s ease}
+${allStyles}
+</style>
+</head>
+<body>
+<div class="widget-wrap">
+<span class="back-label">📘 ${chapterTitle} — Interactive Tool</span>
+${widget.html}
+</div>
+<script>
+${fixedJs}
+<\/script>
+</body>
+</html>`;}
+
+// FILE INPUT
+const dropZone=document.getElementById('dropZone');
+const fileInput=document.getElementById('fileInput');
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over')});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)handleFile(f)});
+fileInput.addEventListener('change',e=>{if(e.target.files[0])handleFile(e.target.files[0])});
+
+function handleFile(file){
+  if(!file.name.match(/\.html?$/i)){alert('Please upload an HTML file.');return;}
+  originalFile=file;
+  const reader=new FileReader();
+  reader.onload=e=>{originalText=e.target.result;showFileInfo(file);analyseFile();};
+  reader.readAsText(file);
+}
+function showFileInfo(file){
+  document.getElementById('fileName').textContent=file.name;
+  document.getElementById('fileSize').textContent=formatBytes(file.size);
+  document.getElementById('fileInfo').classList.add('show');
+}
+
+function analyseFile(){
+  const issues=[],stats=[];
+  const sizeKB=originalText.length/1024;
+  stats.push({val:formatBytes(originalText.length),lbl:'File size',cls:sizeKB>500?'danger':sizeKB>200?'warn':'ok'});
+  const b64=[...originalText.matchAll(/src="data:(image\/[^;]+);base64,([^"]+)"/g)];
+  stats.push({val:b64.length,lbl:'Embedded images',cls:b64.length>0?'warn':'ok'});
+  if(b64.length){const imgSize=b64.reduce((s,m)=>s+m[2].length*0.75,0);issues.push({icon:'🖼️',text:`<strong>${b64.length} base64 image${b64.length>1?'s':''}</strong> — ${formatBytes(imgSize)}`,sub:'Will be extracted as separate files'});}
+  const styleTags=[...originalText.matchAll(/<style[^>]*>[\s\S]*?<\/style>/gi)];
+  stats.push({val:styleTags.length,lbl:'Style blocks',cls:styleTags.length>0?'warn':'ok'});
+  if(styleTags.length)issues.push({icon:'🎨',text:`<strong>${styleTags.length} &lt;style&gt; block${styleTags.length>1?'s':''}</strong>`,sub:'Canvas strips these — will be inlined'});
+  const scriptTags=[...originalText.matchAll(/<script[\s\S]*?<\/script>/gi)];
+  stats.push({val:scriptTags.length,lbl:'Script tags',cls:scriptTags.length>0?'warn':'ok'});
+  if(scriptTags.length)issues.push({icon:'⚙️',text:`<strong>${scriptTags.length} &lt;script&gt; tag${scriptTags.length>1?'s':''}</strong>`,sub:'Kept in widget files; optionally stripped from Canvas HTML'});
+  const detected=detectWidgets(originalText);
+  stats.push({val:detected.length,lbl:'Interactive tools',cls:detected.length>0?'purple':'ok'});
+  if(detected.length)issues.push({icon:'🧩',text:`<strong>${detected.length} interactive tool${detected.length>1?'s':''} detected</strong>`,sub:'Will be extracted as separate standalone HTML files'});
+  if(sizeKB>500)issues.push({icon:'🚨',text:'<strong>Exceeds Canvas 500 KB limit</strong>',sub:`${formatBytes(originalText.length)} — optimisation will reduce this`});
+  else issues.push({icon:'✅',text:'Within Canvas size limit',sub:`${formatBytes(originalText.length)} of 500 KB`});
+
+  const statsRow=document.getElementById('statsRow');
+  statsRow.innerHTML='';
+  stats.forEach(s=>statsRow.innerHTML+=`<div class="stat-card"><div class="val ${s.cls}">${s.val}</div><div class="lbl">${s.lbl}</div></div>`);
+  const issuesList=document.getElementById('issuesList');
+  issuesList.innerHTML='';
+  issues.forEach(i=>issuesList.innerHTML+=`<div class="issue-row"><span class="issue-icon">${i.icon}</span><div class="issue-text">${i.text}<div class="issue-sub">${i.sub}</div></div></div>`);
+
+  const widgetCards=document.getElementById('widgetCards');
+  widgetCards.innerHTML='';
+  if(detected.length>0){
+    detected.forEach((w,i)=>{widgetCards.innerHTML+=`<div class="widget-card"><span class="widget-card-icon">🧩</span><div class="widget-card-info"><div class="widget-card-title">${w.title}</div><div class="widget-card-sub">widget-${i+1}.html · ${formatBytes(w.html.length)}</div></div><span class="widget-card-badge">will extract</span></div>`;});
+    document.getElementById('widgetsFound').classList.add('show');
+  } else {
+    document.getElementById('widgetsFound').classList.remove('show');
+  }
+  document.getElementById('analysis').classList.add('show');
+  document.getElementById('options').classList.add('show');
+  document.getElementById('btnOptimize').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('progressWrap').classList.remove('show');
+}
+
+document.getElementById('btnOptimize').addEventListener('click',runOptimise);
+
+async function runOptimise(){
+  const btn=document.getElementById('btnOptimize');
+  btn.disabled=true;
+  const doInline=document.getElementById('opt-inline').checked;
+  const doImages=document.getElementById('opt-images').checked;
+  const doComments=document.getElementById('opt-comments').checked;
+  const doHead=document.getElementById('opt-head').checked;
+  const doScripts=document.getElementById('opt-scripts').checked;
+  const doWidgets=document.getElementById('opt-widgets').checked;
+
+  showProgress(0,'Reading file…');
+  document.getElementById('progressWrap').classList.add('show');
+  document.getElementById('results').classList.remove('show');
+  await delay(60);
+
+  let html=originalText;
+  extractedImages=[];extractedWidgets=[];
+  const allScripts=extractScripts(html);
+  const allStyles=extractStyles(html);
+  const chapterTitle=(html.match(/<title>([^<]+)<\/title>/i)||[])[1]||originalFile.name.replace(/\.html?$/i,'');
+
+  if(doImages){
+    showProgress(12,'Extracting embedded images…');await delay(80);
+    let idx=1;
+    html=html.replace(/src="data:(image\/([^;]+));base64,([^"]+)"/g,(_,mime,ext,b64)=>{
+      const fname=`image-${idx}.${ext==='jpeg'?'jpg':ext}`;
+      extractedImages.push({filename:fname,dataUrl:`data:${mime};base64,${b64}`,mimeType:mime});
+      idx++;return`src="${fname}"`;
+    });
+  }
+
+  if(doWidgets){
+    showProgress(25,'Extracting interactive tools…');await delay(80);
+    const detected=detectWidgets(html);
+    detected.forEach((w,i)=>{
+      const fname=`widget-${i+1}-${w.title.replace(/[^a-z0-9]+/gi,'-').toLowerCase().slice(0,40)}.html`;
+      extractedWidgets.push({title:w.title,filename:fname,html:buildWidgetHTML(w,allScripts,allStyles,chapterTitle)});
+    });
+  }
+
+  if(doComments){showProgress(38,'Stripping comments…');await delay(60);html=html.replace(/<!--(?!\[if)[\s\S]*?-->/g,'');}
+  if(doScripts){showProgress(48,'Removing script tags…');await delay(60);html=html.replace(/<script[\s\S]*?<\/script>/gi,'');}
+
+  if(doInline){
+    showProgress(60,'Inlining CSS…');await delay(100);
+    Object.entries(CLASS_STYLES).forEach(([cls,style])=>{
+      const re=new RegExp(`class="([^"]*\\b${cls}\\b[^"]*)",'g'`);
+      html=html.replace(new RegExp(`class="([^"]*\\b${cls}\\b[^"]*)",'g'`),'').replace(new RegExp(`class="([^"]*\\b${cls}\\b[^"]*)",'g'`),'');
+      // simpler approach
+      html=html.split(`class="${cls}"`).join(`style="${style}"`);
+      // handle class with multiple values
+      html=html.replace(new RegExp(`class="([^"]*?)\\s*\\b${cls}\\b\\s*([^"]*?)",'g'`),(m,a,b)=>{
+        const rem=(a+' '+b).trim();
+        return(rem?`class="${rem}" `:'')+`style="${style}"`;
+      });
+    });
+    Object.entries(TAG_STYLES).forEach(([tag,style])=>{
+      html=html.replace(new RegExp(`<(${tag})(\\s[^>]*)?>,'gi'`),'').replace(new RegExp(`<${tag}>,'gi'`),`<${tag} style="${style}">`);
+      html=html.replace(new RegExp(`<${tag}([^>]*)>,'gi'`),(m,attrs)=>{if(attrs&&attrs.includes('style='))return m;return`<${tag}${attrs||''} style="${style}">`;});
+    });
+    html=resolveVars(html);
+    html=html.replace(/<style[\s\S]*?<\/style>/gi,'');
+  }
+
+  if(doHead){
+    showProgress(78,'Extracting body…');await delay(60);
+    const bodyMatch=html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    if(bodyMatch)html=bodyMatch[1].trim();
+  }
+
+  showProgress(95,'Finalising…');await delay(80);
+  optimisedHTML=html;
+  showProgress(100,'Done!');await delay(200);
+  document.getElementById('progressWrap').classList.remove('show');
+  showResults();
+  btn.disabled=false;
+}
+
+function showResults(){
+  const origSize=originalText.length,newSize=optimisedHTML.length;
+  const saved=Math.round((1-newSize/origSize)*100),newKB=newSize/1024;
+  document.getElementById('resBefore').textContent=formatBytes(origSize);
+  document.getElementById('resAfter').textContent=formatBytes(newSize);
+  document.getElementById('resAfter').className=`big ${newKB>500?'danger':newKB>200?'warn':'ok'}`;
+  document.getElementById('btnDownloadImages').style.display=extractedImages.length?'block':'none';
+
+  const widgetSection=document.getElementById('widgetDlSection');
+  const widgetList=document.getElementById('widgetDlList');
+  widgetList.innerHTML='';
+  if(extractedWidgets.length>0){
+    widgetSection.style.display='block';
+    extractedWidgets.forEach((w,i)=>{
+      const row=document.createElement('div');
+      row.className='widget-dl-row';
+      row.innerHTML=`<span style="font-size:1.1rem">🧩</span><div class="widget-dl-name">${w.title}</div><span class="widget-dl-size">${formatBytes(w.html.length)}</span><button class="btn-dl-small" data-idx="${i}">⬇ Download</button>`;
+      widgetList.appendChild(row);
+    });
+    widgetList.querySelectorAll('[data-idx]').forEach(btn=>{
+      btn.addEventListener('click',()=>{const w=extractedWidgets[parseInt(btn.dataset.idx)];downloadText(w.html,w.filename,'text/html');});
+    });
+  } else {
+    widgetSection.style.display='none';
+  }
+
+  let notes=`<strong>Reduced by ${saved}%</strong> — ${formatBytes(origSize-newSize)} saved.\n`;
+  if(extractedImages.length)notes+=`\n<strong>Images:</strong> ${extractedImages.map(i=>i.filename).join(', ')} — upload to Canvas Files and update src paths.\n`;
+  if(extractedWidgets.length)notes+=`\n<strong>Widgets (${extractedWidgets.length}):</strong> Upload each to your server (e.g. GitHub Pages), then link from Canvas as External URL or embed via iFrame.\n`;
+  notes+=newKB<=500?'\n✅ Canvas HTML is within the 500 KB limit.':'\n⚠️ Still over 500 KB — consider splitting into multiple pages.';
+  document.getElementById('resultNotes').innerHTML=notes.replace(/\n/g,'<br>');
+  document.getElementById('results').classList.add('show');
+}
+
+document.getElementById('btnDownloadHTML').addEventListener('click',()=>{
+  downloadText(optimisedHTML,originalFile.name.replace(/\.html?$/i,'')+'-canvas.html','text/html');
+});
+document.getElementById('btnDownloadImages').addEventListener('click',()=>{
+  extractedImages.forEach((img,i)=>setTimeout(()=>{const a=document.createElement('a');a.href=img.dataUrl;a.download=img.filename;a.click();},i*400));
+});
+function downloadText(content,filename,type){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+function formatBytes(b){if(b<1024)return b+' B';if(b<1024*1024)return(b/1024).toFixed(1)+' KB';return(b/1024/1024).toFixed(2)+' MB';}
+function showProgress(pct,msg){document.getElementById('progressFill').style.width=pct+'%';document.getElementById('progressLog').textContent=msg;}
+function delay(ms){return new Promise(r=>setTimeout(r,ms));}
+</script>
+</body>
+</html>
